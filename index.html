@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="th"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sector Rotation Tracker — SuperTrader</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0d1117;--card:#161b22;--line:#2d333b;--txt:#e6edf3;--dim:#8b949e;--org:#f0a840;
+--green:#3fb950;--red:#f85149;--blue:#58a6ff;--yellow:#d29922}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);
+font-family:-apple-system,'Segoe UI',Roboto,'Noto Sans Thai',sans-serif}
+header{padding:18px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap}
+h1{font-size:20px;margin:0;color:var(--org)}#asof{color:var(--dim);font-size:13px}
+.wrap{display:grid;grid-template-columns:1.1fr 1fr;gap:16px;padding:16px 24px;max-width:1400px;margin:auto}
+@media(max-width:980px){.wrap{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+.card h2{font-size:14px;margin:0 0 10px;color:var(--org);font-weight:600}
+.tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.tabs button{background:#21262d;border:1px solid var(--line);color:var(--dim);padding:4px 12px;border-radius:14px;cursor:pointer;font-size:12px}
+.tabs button.on{background:var(--org);color:#000;border-color:var(--org);font-weight:600}
+.hm{width:100%;border-collapse:collapse;font-size:12.5px}
+.hm th{color:var(--dim);text-align:right;padding:5px 7px;font-weight:500;border-bottom:1px solid var(--line)}
+.hm th:first-child,.hm td:first-child{text-align:left}
+.hm td{padding:5px 7px;text-align:right;border-bottom:1px solid #1c2128;cursor:default}
+.hm td.name{color:var(--org);white-space:nowrap}
+.badge{font-size:10px;padding:1px 7px;border-radius:9px;margin-left:6px;vertical-align:middle}
+.q-Leading{background:#1a3a1f;color:#3fb950}.q-Improving{background:#1a2f4a;color:#58a6ff}
+.q-Weakening{background:#4a3a15;color:#d29922}.q-Lagging{background:#4a1a1a;color:#f85149}
+canvas{max-width:100%}
+.note{color:var(--dim);font-size:11.5px;margin-top:8px;line-height:1.5}
+.bcell{display:flex;align-items:center;gap:8px}.bar{height:7px;border-radius:4px;background:#21262d;flex:1;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:4px}
+.full{grid-column:1/-1}
+.pb{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media(max-width:980px){.pb{grid-template-columns:repeat(2,1fr)}}
+.pbcol{background:#0d1117;border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.pbcol h3{font-size:13px;margin:0 0 6px}.pbcol p{font-size:11.5px;color:var(--dim);line-height:1.55;margin:0 0 8px}
+.chip{display:inline-block;font-size:11px;padding:2px 8px;margin:2px 3px 2px 0;border-radius:10px;background:#21262d;color:var(--txt)}
+.chip b{color:var(--org);font-weight:600}
+.chip i{font-style:normal;font-size:10px;color:var(--dim);margin-left:3px}
+.chip-good{border-left:3px solid var(--green)}.chip-mid{border-left:3px solid var(--yellow)}
+.chip-bad{border-left:3px solid var(--red)}.chip-etf{border-left:3px solid #444c56}
+.sub{font-size:11px;margin:7px 0 3px;font-weight:600;color:var(--dim)}
+.dyn{color:var(--yellow)}
+.apx{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:980px){.apx{grid-template-columns:1fr}}
+.apxb{background:#0d1117;border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+.apxb h4{margin:0 0 6px;font-size:12.5px;color:var(--org)}
+.etfc{display:inline-block;font-size:11px;padding:2px 8px;margin:2px 4px 2px 0;border-radius:10px;background:#21262d;border-left:3px solid var(--org)}
+.etfc b{color:var(--txt)}
+.mem{font-size:10.5px;color:var(--dim);margin-top:6px;line-height:1.5}
+
+</style></head><body>
+<header><h1>🔄 US Sector &amp; Theme Rotation Tracker</h1><div id="asof"></div></header>
+<div class="wrap">
+<div class="card"><h2>Relative Rotation Graph (เทียบ SPY, หางย้อนหลัง 8 สัปดาห์)</h2>
+<div class="tabs" id="rrgTabs"><button data-f="theme" class="on">ธีม</button><button data-f="sector">Sector ETF</button><button data-f="all">ทั้งหมด</button></div>
+<canvas id="rrg" height="330"></canvas>
+<div class="note">แกน X = RS-Ratio (แรงเทียบตลาดปัจจุบัน) • แกน Y = RS-Momentum (โมเมนตัมของแรงนั้น) •
+เขียว Leading = แข็งและยังแรงขึ้น • ฟ้า Improving = ยังอ่อนแต่กำลังฟื้น (เงินเริ่มไหลเข้า) •
+เหลือง Weakening = ยังแข็งแต่แผ่ว (เงินเริ่มไหลออก) • แดง Lagging = อ่อนและยังแย่ลง จุดใหญ่คือสัปดาห์ล่าสุด</div></div>
+<div class="card"><h2>Heatmap ผลตอบแทนรายธีม (equal-weight)</h2>
+<div class="tabs" id="hmTabs"><button data-k="r1m" class="on">เรียงตาม 1M</button><button data-k="r1w">1W</button><button data-k="r1d">1D</button><button data-k="rel1m">1M เทียบ SPY</button></div>
+<table class="hm" id="hmT"></table></div>
+<div class="card full"><h2>🎯 Momentum Playbook — เล่นตาม rotation ยังไง</h2>
+<div class="pb">
+<div class="pbcol" style="border-top:3px solid var(--green)"><h3 style="color:var(--green)">Leading — ถือต่อ / เล่นโมเมนตัม</h3>
+<p>กลุ่มที่แข็งกว่าตลาดและยังแรงขึ้น เหมาะสุดสำหรับสาย momentum แต่ต้องดู RS-Momentum (แกน Y) ประกอบ ถ้าเริ่มโค้งลงใกล้ 100 แปลว่ากำลังจะเปลี่ยนเป็น Weakening ให้เตรียมแผนออก</p><div id="q-Leading"></div></div>
+<div class="pbcol" style="border-top:3px solid var(--blue)"><h3 style="color:var(--blue)">Improving — จุดเข้าที่ risk/reward ดีสุด</h3>
+<p>ยังอ่อนกว่าตลาดแต่โมเมนตัมกลับทิศแล้ว คือ "เงินเริ่มไหลเข้าแต่ราคายังไม่แพง" สายซื้อก่อนฝูงชนเล่นตรงนี้ จุดยืนยันคือหางบนกราฟชี้ขึ้นต่อเนื่อง 2-3 สัปดาห์ + breadth เริ่มฟื้น</p><div id="q-Improving"></div></div>
+<div class="pbcol" style="border-top:3px solid var(--yellow)"><h3 style="color:var(--yellow)">Weakening — ทยอยขาย ห้ามเพิ่มไม้</h3>
+<p>ยังแข็งกว่าตลาดอยู่ (ผลตอบแทนสะสมยังสวย) แต่แรงส่งแผ่วลง คือโซนที่คนติดดอยเยอะสุดเพราะ "ผลตอบแทนสะสมยังสวย กราฟยังดูดี" ทั้งที่เงินเริ่มออกแล้ว ถ้าจะช้อนให้รอมันวนลง Lagging แล้วกลับขึ้น Improving ก่อน <span class="dyn" id="dyn-weak"></span></p><div id="q-Weakening"></div></div>
+<div class="pbcol" style="border-top:3px solid var(--red)"><h3 style="color:var(--red)">Lagging — ห้ามรีบช้อน</h3>
+<p>อ่อนกว่าตลาดและยังแย่ลง สาย momentum ข้ามไปเลย เด้งแรงรายสัปดาห์ในโซนนี้ส่วนใหญ่คือ dead cat bounce จะน่าสนใจก็ต่อเมื่อขยับข้ามขึ้นไป Improving เท่านั้น</p><div id="q-Lagging"></div></div>
+</div>
+<div class="note">ขอบสีของป้าย = สุขภาพ breadth (เขียว &ge;50% ของสมาชิกยืนเหนือ 20DMA &bull; เหลือง 30-50% &bull; แดง &lt;30% &bull; เทา = Sector ETF ไม่มีค่า breadth) ตัวเลข B คือ % สมาชิกเหนือ 20DMA &bull; วงจรปกติหมุนตามเข็มนาฬิกา: Improving → Leading → Weakening → Lagging → กลับมา Improving ใหม่ • ป้ายในแต่ละช่องเรียงตามความแข็งเทียบ SPY (1M) • นี่คือกรอบวิเคราะห์ ไม่ใช่คำแนะนำซื้อขายรายตัว</div></div>
+<div class="card full"><h2>Breadth &amp; Volume — สัญญาณเตือนก่อนราคา</h2>
+<table class="hm" id="brT"></table>
+<div class="note">% เหนือ 20DMA ต่ำ = สมาชิกในธีมหลุดแนวโน้มระยะสั้นเกือบหมด (แม้ราคาตะกร้ายังไม่พังมาก) •
+Dollar Volume Ratio &gt; 1 = เม็ดเงินซื้อขาย 5 วันล่าสุดหนาแน่นกว่าค่าเฉลี่ยเดือนก่อน = เงินกำลังวิ่งเข้ามาเล่นกลุ่มนี้</div></div>
+<div class="card full"><h2>📎 Appendix — จะเล่นธีมไหน ไปตัวไหนได้บ้าง</h2><div class="apx"><div class="apxb"><h4>Semiconductors</h4><div><span class="etfc"><b>SMH</b> VanEck Semiconductor</span><span class="etfc"><b>SOXX</b> iShares Semiconductor</span></div><div class="mem">หุ้นในตะกร้า: NVDA, AMD, AVGO, TSM, QCOM, TXN, INTC, MRVL</div></div><div class="apxb"><h4>Semi Equip & Memory</h4><div><span class="etfc"><b>SMH</b> น้ำหนัก equipment สูง (ไม่มี ETF เฉพาะกลุ่มนี้ — เน้นเล่นรายตัว)</span></div><div class="mem">หุ้นในตะกร้า: MU, WDC, STX, AMAT, LRCX, KLAC, ASML</div></div><div class="apxb"><h4>Software</h4><div><span class="etfc"><b>IGV</b> iShares Expanded Tech-Software</span><span class="etfc"><b>XSW</b> SPDR S&P Software (equal-weight)</span></div><div class="mem">หุ้นในตะกร้า: MSFT, ORCL, CRM, ADBE, NOW, PLTR, INTU, SNPS, CDNS</div></div><div class="apxb"><h4>Mag 7</h4><div><span class="etfc"><b>MAGS</b> Roundhill Magnificent Seven</span></div><div class="mem">หุ้นในตะกร้า: AAPL, MSFT, NVDA, AMZN, GOOGL, META, TSLA</div></div><div class="apxb"><h4>Cybersecurity</h4><div><span class="etfc"><b>CIBR</b> First Trust Nasdaq Cybersecurity</span><span class="etfc"><b>HACK</b> Amplify Cybersecurity</span><span class="etfc"><b>BUG</b> Global X Cybersecurity</span></div><div class="mem">หุ้นในตะกร้า: CRWD, PANW, FTNT, ZS, OKTA</div></div><div class="apxb"><h4>Genomics</h4><div><span class="etfc"><b>ARKG</b> ARK Genomic Revolution</span><span class="etfc"><b>IDNA</b> iShares Genomics & Immunology</span></div><div class="mem">หุ้นในตะกร้า: CRSP, EDIT, BEAM, NTLA, ILMN, RXRX, TWST, PACB</div></div><div class="apxb"><h4>Biotech Large</h4><div><span class="etfc"><b>IBB</b> iShares Biotechnology</span><span class="etfc"><b>XBI</b> SPDR S&P Biotech (equal-weight, ตัวเล็กเยอะ)</span></div><div class="mem">หุ้นในตะกร้า: AMGN, GILD, VRTX, REGN, BIIB</div></div><div class="apxb"><h4>Pharma & Managed Care</h4><div><span class="etfc"><b>IHE</b> iShares US Pharmaceuticals</span><span class="etfc"><b>XLV</b> Health Care ทั้ง sector</span></div><div class="mem">หุ้นในตะกร้า: LLY, UNH, JNJ, MRK, ABBV, PFE</div></div><div class="apxb"><h4>Defense</h4><div><span class="etfc"><b>ITA</b> iShares US Aerospace & Defense</span><span class="etfc"><b>XAR</b> SPDR Aerospace & Defense (equal-weight)</span><span class="etfc"><b>PPA</b> Invesco Aerospace & Defense</span></div><div class="mem">หุ้นในตะกร้า: LMT, RTX, NOC, GD, LHX</div></div><div class="apxb"><h4>Energy</h4><div><span class="etfc"><b>XLE</b> Energy Select Sector</span><span class="etfc"><b>XOP</b> SPDR Oil & Gas E&P (equal-weight)</span><span class="etfc"><b>OIH</b> VanEck Oil Services</span></div><div class="mem">หุ้นในตะกร้า: XOM, CVX, COP, SLB, EOG</div></div><div class="apxb"><h4>Banks & Brokers</h4><div><span class="etfc"><b>KBWB</b> Invesco KBW Bank</span><span class="etfc"><b>KBE</b> SPDR S&P Bank</span><span class="etfc"><b>IAI</b> iShares US Broker-Dealers</span></div><div class="mem">หุ้นในตะกร้า: JPM, GS, MS, BAC, WFC</div></div><div class="apxb"><h4>Staples</h4><div><span class="etfc"><b>XLP</b> Consumer Staples Select Sector</span></div><div class="mem">หุ้นในตะกร้า: PG, KO, PEP, COST, WMT</div></div><div class="apxb"><h4>Utilities & Power</h4><div><span class="etfc"><b>XLU</b> Utilities Select Sector</span><span class="etfc"><b>GRID</b> First Trust Smart Grid Infrastructure</span></div><div class="mem">หุ้นในตะกร้า: NEE, DUK, SO, VST, CEG</div></div><div class="apxb"><h4>Materials</h4><div><span class="etfc"><b>XLB</b> Materials Select Sector</span></div><div class="mem">หุ้นในตะกร้า: LIN, FCX, NUE, SHW, APD</div></div><div class="apxb"><h4>AI Infra & Data Center</h4><div><span class="etfc"><b>AIQ</b> Global X Artificial Intelligence & Technology</span><span class="etfc"><b>DTCR</b> Global X Data Center & Digital Infrastructure</span><span class="etfc"><b>GRID</b> First Trust Smart Grid Infrastructure</span></div><div class="mem">หุ้นในตะกร้า: VRT, ETN, ANET, SMCI, DELL, CIEN</div></div><div class="apxb"><h4>Quantum</h4><div><span class="etfc"><b>QTUM</b> Defiance Quantum</span></div><div class="mem">หุ้นในตะกร้า: IONQ, RGTI, QBTS</div></div><div class="apxb"><h4>Nuclear & Uranium</h4><div><span class="etfc"><b>URA</b> Global X Uranium</span><span class="etfc"><b>NLR</b> VanEck Uranium & Nuclear</span><span class="etfc"><b>URNM</b> Sprott Uranium Miners</span></div><div class="mem">หุ้นในตะกร้า: CCJ, OKLO, SMR, LEU, BWXT</div></div><div class="apxb"><h4>Gold Miners</h4><div><span class="etfc"><b>GDX</b> VanEck Gold Miners</span><span class="etfc"><b>GDXJ</b> VanEck Junior Gold Miners</span><span class="etfc"><b>GLD</b> SPDR Gold (ทองคำ spot)</span></div><div class="mem">หุ้นในตะกร้า: NEM, AEM, GOLD, WPM</div></div><div class="apxb"><h4>Solar</h4><div><span class="etfc"><b>TAN</b> Invesco Solar</span><span class="etfc"><b>ICLN</b> iShares Global Clean Energy (กว้างกว่า solar)</span></div><div class="mem">หุ้นในตะกร้า: FSLR, ENPH, NXT, RUN</div></div><div class="apxb"><h4>Crypto-linked</h4><div><span class="etfc"><b>IBIT</b> iShares Bitcoin Trust (spot BTC)</span><span class="etfc"><b>DAPP</b> VanEck Digital Transformation</span><span class="etfc"><b>WGMI</b> CoinShares Bitcoin Miners</span></div><div class="mem">หุ้นในตะกร้า: COIN, MSTR, HOOD, MARA, RIOT</div></div><div class="apxb"><h4>Space & Drones</h4><div><span class="etfc"><b>ARKX</b> ARK Space Exploration</span><span class="etfc"><b>UFO</b> Procure Space</span></div><div class="mem">หุ้นในตะกร้า: RKLB, ASTS, AVAV, KTOS, LUNR</div></div><div class="apxb"><h4>China Tech ADR</h4><div><span class="etfc"><b>KWEB</b> KraneShares CSI China Internet</span><span class="etfc"><b>CQQQ</b> Invesco China Technology</span></div><div class="mem">หุ้นในตะกร้า: BABA, PDD, BIDU, JD, BEKE</div></div><div class="apxb"><h4>Homebuilders</h4><div><span class="etfc"><b>ITB</b> iShares US Home Construction</span><span class="etfc"><b>XHB</b> SPDR S&P Homebuilders</span></div><div class="mem">หุ้นในตะกร้า: DHI, LEN, PHM, TOL, NVR</div></div><div class="apxb"><h4>Travel & Airlines</h4><div><span class="etfc"><b>JETS</b> US Global Jets</span><span class="etfc"><b>PEJ</b> Invesco Leisure & Entertainment</span></div><div class="mem">หุ้นในตะกร้า: BKNG, ABNB, MAR, DAL, UAL, RCL</div></div><div class="apxb"><h4>Fintech & Payments</h4><div><span class="etfc"><b>IPAY</b> Amplify Mobile Payments</span><span class="etfc"><b>FINX</b> Global X FinTech</span></div><div class="mem">หุ้นในตะกร้า: V, MA, PYPL, AXP, COF</div></div></div><div class="note">ข้อควรรู้: ETF ส่วนใหญ่ถ่วงน้ำหนักตาม market cap จึงไม่ตรงกับตะกร้า equal-weight ที่ใช้คำนวณในจอนี้ 100% ผลตอบแทนอาจต่างกันได้พอสมควรโดยเฉพาะธีมที่มีหุ้นยักษ์ครอบ (เช่น SMH ที่ NVDA กินสัดส่วนสูง) &bull; เช็คค่าธรรมเนียมและสภาพคล่องก่อนซื้อเสมอ &bull; รายชื่อทั้งหมดคือเครื่องมือประกอบการวิเคราะห์ ไม่ใช่คำแนะนำซื้อขายรายตัวนะคะ</div></div></div>
+<script>
+const M = {"asof": "2026-07-02", "spy": {"r1d": -0.19, "r1w": 1.37, "r1m": -1.75, "r3m": 13.89}, "themes": {"Semiconductors": {"r1d": -4.19, "r1w": -6.58, "r1m": -6.86, "r3m": 79.12, "rel1m": -5.11, "quad": "Weakening"}, "Semi Equip & Memory": {"r1d": -7.26, "r1w": -14.82, "r1m": 0.63, "r3m": 86.49, "rel1m": 2.38, "quad": "Weakening"}, "Software": {"r1d": 0.4, "r1w": 6.62, "r1m": -17.33, "r3m": -0.98, "rel1m": -15.58, "quad": "Improving"}, "Mag 7": {"r1d": -0.84, "r1w": 6.35, "r1m": -5.58, "r3m": 12.15, "rel1m": -3.83, "quad": "Improving"}, "Cybersecurity": {"r1d": -0.05, "r1w": 14.1, "r1m": 6.75, "r3m": 86.13, "rel1m": 8.5, "quad": "Leading"}, "Genomics": {"r1d": 1.7, "r1w": 7.73, "r1m": 23.76, "r3m": 50.29, "rel1m": 25.51, "quad": "Leading"}, "Biotech Large": {"r1d": 3.35, "r1w": 6.0, "r1m": 11.83, "r3m": 2.52, "rel1m": 13.58, "quad": "Leading"}, "Pharma & Managed Care": {"r1d": 1.63, "r1w": 4.43, "r1m": 11.77, "r3m": 14.76, "rel1m": 13.53, "quad": "Leading"}, "Defense": {"r1d": 3.21, "r1w": 6.65, "r1m": 5.67, "r3m": -8.4, "rel1m": 7.43, "quad": "Improving"}, "Energy": {"r1d": 0.67, "r1w": -2.66, "r1m": -11.69, "r3m": -12.66, "rel1m": -9.94, "quad": "Lagging"}, "Banks & Brokers": {"r1d": 0.25, "r1w": -1.44, "r1m": 4.3, "r3m": 17.94, "rel1m": 6.05, "quad": "Weakening"}, "Staples": {"r1d": 2.12, "r1w": 0.81, "r1m": 2.64, "r3m": -1.56, "rel1m": 4.39, "quad": "Improving"}, "Utilities & Power": {"r1d": 0.76, "r1w": -3.4, "r1m": 0.39, "r3m": -4.25, "rel1m": 2.14, "quad": "Improving"}, "Materials": {"r1d": 0.76, "r1w": -1.08, "r1m": -2.61, "r3m": 9.91, "rel1m": -0.85, "quad": "Lagging"}, "AI Infra & Data Center": {"r1d": -5.65, "r1w": -7.51, "r1m": -19.24, "r3m": 29.69, "rel1m": -17.48, "quad": "Lagging"}, "Quantum": {"r1d": -3.16, "r1w": 0.43, "r1m": -28.62, "r3m": 60.46, "rel1m": -26.86, "quad": "Lagging"}, "Nuclear & Uranium": {"r1d": -1.04, "r1w": -5.17, "r1m": -16.28, "r3m": -9.1, "rel1m": -14.53, "quad": "Lagging"}, "Gold Miners": {"r1d": 2.98, "r1w": 2.86, "r1m": -5.32, "r3m": -11.4, "rel1m": -3.57, "quad": "Lagging"}, "Solar": {"r1d": -3.17, "r1w": -4.67, "r1m": -28.82, "r3m": 2.93, "rel1m": -27.07, "quad": "Lagging"}, "Crypto-linked": {"r1d": -2.4, "r1w": -3.89, "r1m": -8.93, "r3m": 39.54, "rel1m": -7.17, "quad": "Lagging"}, "Space & Drones": {"r1d": 0.81, "r1w": 20.38, "r1m": -31.49, "r3m": 9.94, "rel1m": -29.74, "quad": "Lagging"}, "China Tech ADR": {"r1d": -1.3, "r1w": 6.39, "r1m": -15.03, "r3m": -7.81, "rel1m": -13.28, "quad": "Lagging"}, "Homebuilders": {"r1d": 0.83, "r1w": -3.23, "r1m": 8.49, "r3m": 10.36, "rel1m": 10.24, "quad": "Leading"}, "Travel & Airlines": {"r1d": 0.27, "r1w": 0.28, "r1m": 10.95, "r3m": 22.22, "rel1m": 12.7, "quad": "Leading"}, "Fintech & Payments": {"r1d": 1.44, "r1w": 5.08, "r1m": 10.66, "r3m": 12.38, "rel1m": 12.41, "quad": "Leading"}, "Tech (XLK)": {"r1d": -2.37, "r1w": -1.81, "r1m": -8.46, "r3m": 34.49, "rel1m": -6.71, "quad": "Weakening"}, "Health Care (XLV)": {"r1d": 2.12, "r1w": 4.69, "r1m": 11.78, "r3m": 10.78, "rel1m": 13.53, "quad": "Leading"}, "Staples (XLP)": {"r1d": 1.6, "r1w": 0.82, "r1m": 4.14, "r3m": 4.61, "rel1m": 5.89, "quad": "Improving"}, "Utilities (XLU)": {"r1d": 1.3, "r1w": -1.09, "r1m": 3.96, "r3m": -1.02, "rel1m": 5.72, "quad": "Improving"}, "Materials (XLB)": {"r1d": 1.49, "r1w": -0.12, "r1m": 0.88, "r3m": 3.0, "rel1m": 2.63, "quad": "Improving"}, "Energy (XLE)": {"r1d": 0.47, "r1w": -1.9, "r1m": -7.79, "r3m": -9.37, "rel1m": -6.04, "quad": "Improving"}, "Financials (XLF)": {"r1d": 1.09, "r1w": 3.6, "r1m": 7.98, "r3m": 12.4, "rel1m": 9.74, "quad": "Leading"}, "Industrials (XLI)": {"r1d": 0.09, "r1w": -0.33, "r1m": 5.62, "r3m": 11.88, "rel1m": 7.37, "quad": "Leading"}, "Cons Discret (XLY)": {"r1d": -0.48, "r1w": 3.68, "r1m": 0.14, "r3m": 7.24, "rel1m": 1.89, "quad": "Improving"}, "Comm Svcs (XLC)": {"r1d": -0.87, "r1w": 3.04, "r1m": -3.96, "r3m": -1.95, "rel1m": -2.21, "quad": "Improving"}, "Real Estate (XLRE)": {"r1d": 0.79, "r1w": -0.13, "r1m": 3.29, "r3m": 9.7, "rel1m": 5.04, "quad": "Improving"}}, "rrg": {"Semiconductors": [[136.86, 108.63], [128.98, 96.59], [133.52, 97.56], [139.41, 108.08], [120.87, 90.53], [125.4, 89.95], [122.71, 101.52], [108.87, 86.82]], "Semi Equip & Memory": [[129.04, 115.0], [117.66, 93.45], [132.85, 102.96], [141.14, 119.96], [125.32, 94.33], [144.32, 102.25], [144.46, 115.28], [115.63, 80.12]], "Software": [[95.51, 98.59], [97.21, 98.44], [95.05, 99.52], [100.86, 103.76], [96.59, 101.62], [90.95, 90.17], [86.44, 89.5], [92.08, 101.24]], "Mag 7": [[103.69, 100.38], [103.01, 100.09], [102.82, 99.17], [98.97, 96.07], [97.01, 94.35], [95.97, 96.98], [91.63, 94.46], [96.23, 100.27]], "Cybersecurity": [[112.78, 114.24], [125.53, 124.14], [118.86, 105.38], [134.74, 107.33], [125.41, 105.52], [123.74, 91.84], [124.59, 99.35], [134.87, 108.99]], "Genomics": [[97.76, 95.08], [88.01, 87.05], [102.63, 104.98], [106.42, 120.92], [102.49, 99.86], [108.68, 102.13], [119.63, 116.72], [124.08, 114.16]], "Biotech Large": [[91.21, 100.93], [88.4, 99.3], [89.15, 97.75], [88.93, 100.61], [92.29, 103.52], [94.17, 105.88], [97.95, 106.14], [103.59, 110.01]], "Pharma & Managed Care": [[94.39, 101.19], [96.82, 102.36], [97.53, 103.33], [95.5, 98.63], [104.31, 106.95], [100.86, 105.62], [105.17, 100.83], [108.27, 107.35]], "Defense": [[83.29, 100.0], [84.49, 102.43], [84.57, 101.54], [83.83, 99.22], [90.79, 107.35], [94.67, 112.94], [91.71, 101.01], [98.62, 104.17]], "Energy": [[93.51, 94.29], [99.7, 101.47], [91.54, 97.89], [94.47, 94.75], [97.63, 106.66], [89.66, 94.91], [89.01, 91.17], [87.68, 97.79]], "Banks & Brokers": [[95.51, 96.03], [95.41, 97.65], [97.25, 101.83], [100.09, 104.9], [104.3, 107.24], [108.07, 107.97], [107.68, 103.24], [104.37, 96.58]], "Staples": [[93.28, 97.42], [96.52, 102.11], [91.38, 97.96], [89.0, 92.21], [97.21, 106.39], [94.4, 106.07], [94.7, 97.42], [95.44, 101.1]], "Utilities & Power": [[90.58, 93.12], [88.32, 91.69], [90.48, 99.89], [87.46, 99.02], [91.05, 100.63], [93.48, 106.88], [97.98, 107.61], [94.73, 101.34]], "Materials": [[99.4, 99.3], [95.31, 97.19], [98.4, 98.99], [101.33, 106.31], [100.95, 102.6], [102.38, 101.04], [101.08, 100.13], [98.87, 96.57]], "AI Infra & Data Center": [[117.37, 102.42], [107.95, 90.96], [114.22, 97.31], [125.22, 116.01], [101.29, 88.68], [105.01, 83.86], [108.07, 106.69], [97.12, 92.49]], "Quantum": [[120.7, 118.37], [100.94, 87.61], [139.33, 115.43], [135.22, 133.95], [114.09, 81.89], [108.47, 80.22], [99.54, 87.24], [96.33, 88.81]], "Nuclear & Uranium": [[94.99, 98.25], [84.58, 89.41], [89.31, 94.02], [89.83, 106.21], [81.78, 91.57], [90.62, 100.87], [90.06, 110.12], [85.47, 94.32]], "Gold Miners": [[89.28, 101.57], [82.17, 97.94], [85.3, 95.55], [84.73, 103.11], [83.31, 97.66], [92.5, 109.18], [87.09, 104.54], [89.93, 97.22]], "Solar": [[96.91, 109.47], [102.54, 108.98], [124.11, 128.07], [126.64, 123.5], [99.36, 80.06], [99.83, 78.83], [98.19, 98.82], [92.74, 92.89]], "Crypto-linked": [[118.52, 111.85], [109.17, 95.55], [112.97, 95.32], [109.27, 100.09], [103.23, 91.38], [112.02, 102.52], [104.42, 101.15], [97.32, 86.87]], "Space & Drones": [[112.43, 119.5], [116.87, 128.47], [138.64, 123.31], [112.28, 96.07], [97.72, 70.49], [91.04, 81.08], [72.93, 74.63], [86.84, 95.39]], "China Tech ADR": [[99.28, 105.64], [101.21, 104.87], [91.51, 92.17], [91.97, 90.87], [89.95, 98.3], [86.18, 93.7], [80.55, 89.55], [86.1, 99.92]], "Homebuilders": [[84.69, 91.43], [83.72, 96.6], [91.23, 107.72], [91.19, 108.92], [97.3, 106.66], [98.37, 107.87], [108.53, 111.53], [103.76, 105.48]], "Travel & Airlines": [[92.34, 97.86], [91.13, 96.28], [100.84, 109.21], [98.71, 108.31], [100.42, 99.58], [105.64, 107.02], [112.05, 111.58], [110.08, 104.2]], "Fintech & Payments": [[92.31, 96.79], [93.04, 99.23], [92.28, 99.97], [88.65, 95.28], [94.65, 102.57], [98.6, 111.23], [100.27, 105.94], [104.35, 105.84]], "Tech (XLK)": [[111.7, 105.14], [109.79, 100.72], [112.7, 100.9], [117.08, 106.64], [107.98, 95.82], [109.57, 93.59], [108.03, 100.05], [103.08, 94.08]], "Health Care (XLV)": [[90.59, 99.58], [93.12, 102.28], [92.98, 102.64], [92.92, 99.79], [100.81, 108.42], [98.02, 105.49], [102.95, 102.13], [106.7, 108.86]], "Staples (XLP)": [[93.1, 99.0], [96.37, 102.75], [93.49, 100.42], [91.53, 94.99], [99.87, 106.83], [96.48, 105.41], [98.8, 98.92], [99.15, 102.77]], "Utilities (XLU)": [[90.98, 94.09], [90.51, 95.22], [90.88, 99.88], [88.69, 97.99], [93.87, 103.29], [94.05, 106.05], [99.19, 105.67], [97.95, 104.14]], "Materials (XLB)": [[94.79, 98.34], [90.56, 95.24], [93.36, 98.48], [94.62, 104.48], [95.09, 101.86], [98.06, 103.63], [99.11, 104.23], [98.52, 100.47]], "Energy (XLE)": [[93.29, 95.28], [99.82, 101.57], [90.84, 97.37], [93.62, 93.79], [96.98, 106.76], [90.11, 96.25], [91.99, 94.85], [91.09, 101.08]], "Financials (XLF)": [[94.23, 97.24], [94.61, 99.27], [93.65, 99.38], [92.92, 98.21], [99.57, 106.33], [101.07, 108.77], [101.2, 101.64], [103.74, 102.64]], "Industrials (XLI)": [[94.99, 98.71], [93.16, 97.62], [94.86, 99.86], [95.13, 102.12], [96.94, 102.2], [100.79, 105.95], [104.42, 107.71], [102.76, 101.95]], "Cons Discret (XLY)": [[95.8, 98.43], [94.28, 97.11], [97.85, 102.14], [94.04, 99.75], [95.69, 97.79], [95.83, 101.91], [95.41, 99.71], [98.07, 102.33]], "Comm Svcs (XLC)": [[93.45, 97.45], [94.48, 99.84], [93.29, 99.82], [90.36, 95.64], [94.07, 100.84], [91.61, 101.39], [90.55, 96.25], [93.16, 101.69]], "Real Estate (XLRE)": [[96.61, 97.61], [96.27, 98.63], [96.0, 99.37], [93.82, 97.46], [101.23, 105.44], [97.25, 103.65], [100.36, 99.15], [99.19, 101.99]]}, "breadth": {"Semiconductors": {"pct_above_20dma": 25.0, "dollar_vol_ratio": 0.76}, "Semi Equip & Memory": {"pct_above_20dma": 14.3, "dollar_vol_ratio": 1.14}, "Software": {"pct_above_20dma": 55.6, "dollar_vol_ratio": 1.08}, "Mag 7": {"pct_above_20dma": 57.1, "dollar_vol_ratio": 1.2}, "Cybersecurity": {"pct_above_20dma": 100.0, "dollar_vol_ratio": 0.87}, "Genomics": {"pct_above_20dma": 100.0, "dollar_vol_ratio": 1.07}, "Biotech Large": {"pct_above_20dma": 100.0, "dollar_vol_ratio": 1.08}, "Pharma & Managed Care": {"pct_above_20dma": 83.3, "dollar_vol_ratio": 1.23}, "Defense": {"pct_above_20dma": 100.0, "dollar_vol_ratio": 0.94}, "Energy": {"pct_above_20dma": 0.0, "dollar_vol_ratio": 0.86}, "Banks & Brokers": {"pct_above_20dma": 60.0, "dollar_vol_ratio": 0.94}, "Staples": {"pct_above_20dma": 60.0, "dollar_vol_ratio": 1.13}, "Utilities & Power": {"pct_above_20dma": 60.0, "dollar_vol_ratio": 0.91}, "Materials": {"pct_above_20dma": 60.0, "dollar_vol_ratio": 1.08}, "AI Infra & Data Center": {"pct_above_20dma": 0.0, "dollar_vol_ratio": 0.82}, "Quantum": {"pct_above_20dma": 0.0, "dollar_vol_ratio": 0.62}, "Nuclear & Uranium": {"pct_above_20dma": 0.0, "dollar_vol_ratio": 0.72}, "Gold Miners": {"pct_above_20dma": 25.0, "dollar_vol_ratio": 0.76}, "Solar": {"pct_above_20dma": 0.0, "dollar_vol_ratio": 1.05}, "Crypto-linked": {"pct_above_20dma": 40.0, "dollar_vol_ratio": 0.97}, "Space & Drones": {"pct_above_20dma": 60.0, "dollar_vol_ratio": 0.92}, "China Tech ADR": {"pct_above_20dma": 20.0, "dollar_vol_ratio": 0.87}, "Homebuilders": {"pct_above_20dma": 80.0, "dollar_vol_ratio": 0.86}, "Travel & Airlines": {"pct_above_20dma": 66.7, "dollar_vol_ratio": 0.98}, "Fintech & Payments": {"pct_above_20dma": 100.0, "dollar_vol_ratio": 1.13}}, "is_sector": {"Semiconductors": false, "Semi Equip & Memory": false, "Software": false, "Mag 7": false, "Cybersecurity": false, "Genomics": false, "Biotech Large": false, "Pharma & Managed Care": false, "Defense": false, "Energy": false, "Banks & Brokers": false, "Staples": false, "Utilities & Power": false, "Materials": false, "AI Infra & Data Center": false, "Quantum": false, "Nuclear & Uranium": false, "Gold Miners": false, "Solar": false, "Crypto-linked": false, "Space & Drones": false, "China Tech ADR": false, "Homebuilders": false, "Travel & Airlines": false, "Fintech & Payments": false, "Tech (XLK)": true, "Health Care (XLV)": true, "Staples (XLP)": true, "Utilities (XLU)": true, "Materials (XLB)": true, "Energy (XLE)": true, "Financials (XLF)": true, "Industrials (XLI)": true, "Cons Discret (XLY)": true, "Comm Svcs (XLC)": true, "Real Estate (XLRE)": true}};
+document.getElementById('asof').textContent = 'ข้อมูล ณ ' + M.asof + ' (ราคาปิด/ล่าสุด) • SPY 1D ' + M.spy.r1d + '% | 1M ' + M.spy.r1m + '% | 3M ' + M.spy.r3m + '%';
+const QC = {Leading:'#3fb950',Improving:'#58a6ff',Weakening:'#d29922',Lagging:'#f85149'};
+const names = Object.keys(M.themes);
+
+// ---- RRG ----
+let rrgChart=null;
+function drawRRG(filter){
+  const sel = names.filter(n => filter==='all' || (filter==='sector')===M.is_sector[n]);
+  const ds = [];
+  sel.forEach(n=>{
+    const pts = M.rrg[n]; const q = M.themes[n].quad; const c = QC[q];
+    ds.push({label:n, data:pts.map(p=>({x:p[0],y:p[1]})), showLine:true, borderColor:c+'55',
+      backgroundColor:pts.map((_,i)=> i===pts.length-1 ? c : c+'44'),
+      pointRadius:pts.map((_,i)=> i===pts.length-1 ? 7 : 2.5), borderWidth:1.5, tension:.3});
+  });
+  if(rrgChart) rrgChart.destroy();
+  const ctx = document.getElementById('rrg');
+  rrgChart = new Chart(ctx,{type:'scatter',data:{datasets:ds},options:{
+    animation:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:i=>i.dataset.label+' ('+M.themes[i.dataset.label].quad+') RS '+i.parsed.x.toFixed(1)+' / Mom '+i.parsed.y.toFixed(1)}}},
+    scales:{x:{title:{display:true,text:'RS-Ratio',color:'#8b949e'},grid:{color:'#21262d'},ticks:{color:'#8b949e'}},
+            y:{title:{display:true,text:'RS-Momentum',color:'#8b949e'},grid:{color:'#21262d'},ticks:{color:'#8b949e'}}}
+  },plugins:[{id:'quad',beforeDraw(c){const {ctx,chartArea:a,scales:{x,y}}=c;if(!a)return;
+    const cx=x.getPixelForValue(100),cy=y.getPixelForValue(100);ctx.save();
+    ctx.fillStyle='#3fb95012';ctx.fillRect(cx,a.top,a.right-cx,cy-a.top);
+    ctx.fillStyle='#58a6ff10';ctx.fillRect(a.left,a.top,cx-a.left,cy-a.top);
+    ctx.fillStyle='#d2992210';ctx.fillRect(cx,cy,a.right-cx,a.bottom-cy);
+    ctx.fillStyle='#f8514910';ctx.fillRect(a.left,cy,cx-a.left,a.bottom-cy);
+    ctx.strokeStyle='#2d333b';ctx.beginPath();ctx.moveTo(cx,a.top);ctx.lineTo(cx,a.bottom);ctx.moveTo(a.left,cy);ctx.lineTo(a.right,cy);ctx.stroke();
+    ctx.fillStyle='#8b949e';ctx.font='11px sans-serif';
+    ctx.fillText('IMPROVING',a.left+6,a.top+14);ctx.fillText('LEADING',a.right-64,a.top+14);
+    ctx.fillText('LAGGING',a.left+6,a.bottom-6);ctx.fillText('WEAKENING',a.right-76,a.bottom-6);ctx.restore();}}]});
+  // label points
+}
+document.querySelectorAll('#rrgTabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#rrgTabs button').forEach(x=>x.classList.remove('on'));b.classList.add('on');drawRRG(b.dataset.f)});
+drawRRG('theme');
+
+// ---- Heatmap ----
+function cellColor(v){ if(v===null||isNaN(v)) return 'transparent';
+  const a=Math.min(Math.abs(v)/12,1)*.75+.08; return v>=0?'rgba(46,160,67,'+a+')':'rgba(248,81,73,'+a+')';}
+function drawHM(sortKey){
+  const t=document.getElementById('hmT');
+  const rows=[...names].sort((a,b)=>M.themes[b][sortKey]-M.themes[a][sortKey]);
+  let h='<tr><th>ธีม / Sector</th><th>1D%</th><th>1W%</th><th>1M%</th><th>3M%</th><th>1M vs SPY</th></tr>';
+  rows.forEach(n=>{const d=M.themes[n];
+    h+='<tr><td class="name">'+n+'<span class="badge q-'+d.quad+'">'+d.quad+'</span></td>';
+    ['r1d','r1w','r1m','r3m','rel1m'].forEach(k=>{h+='<td style="background:'+cellColor(d[k])+'">'+(d[k]>0?'+':'')+d[k].toFixed(2)+'</td>'});
+    h+='</tr>'});
+  t.innerHTML=h;}
+document.querySelectorAll('#hmTabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#hmTabs button').forEach(x=>x.classList.remove('on'));b.classList.add('on');drawHM(b.dataset.k)});
+drawHM('r1m');
+
+// ---- Breadth ----
+(function(){const t=document.getElementById('brT');
+ const rows=Object.keys(M.breadth).sort((a,b)=>M.breadth[b].pct_above_20dma-M.breadth[a].pct_above_20dma);
+ let h='<tr><th>ธีม</th><th style="width:38%">% สมาชิกเหนือ 20DMA</th><th>Dollar Vol Ratio (5D/20D)</th></tr>';
+ rows.forEach(n=>{const d=M.breadth[n];const c=d.pct_above_20dma>=60?'#3fb950':d.pct_above_20dma>=35?'#d29922':'#f85149';
+  h+='<tr><td class="name">'+n+'</td><td><div class="bcell"><div class="bar"><i style="width:'+d.pct_above_20dma+'%;background:'+c+'"></i></div><span style="color:'+c+'">'+d.pct_above_20dma+'%</span></div></td>';
+  const vc=d.dollar_vol_ratio>=1.05?'#3fb950':d.dollar_vol_ratio<=0.9?'#f85149':'#8b949e';
+  h+='<td style="color:'+vc+'">'+d.dollar_vol_ratio.toFixed(2)+'×</td></tr>'});
+ t.innerHTML=h;})();
+
+// ---- Playbook ----
+(function(){
+ function bOf(n){return M.breadth[n]||null}
+ function chip(n){const d=M.themes[n];const b=bOf(n);
+  let cls='chip-etf', btxt='ETF';
+  if(b){const p=b.pct_above_20dma;
+   cls = p>=50?'chip-good':p>=30?'chip-mid':'chip-bad';
+   btxt = 'B '+p+'%';}
+  return '<span class="chip '+cls+'"><b>'+n+'</b> '+(d.rel1m>0?'+':'')+d.rel1m.toFixed(1)+'% <i>'+btxt+'</i></span>';}
+ function render(list){return list.map(chip).join('')||'<span class="chip chip-etf">— ไม่มี —</span>'}
+ ['Leading','Improving','Weakening','Lagging'].forEach(q=>{
+  const el=document.getElementById('q-'+q);
+  const list=names.filter(n=>M.themes[n].quad===q).sort((a,b)=>M.themes[b].rel1m-M.themes[a].rel1m);
+  if(q==='Improving'){
+   const good=list.filter(n=>bOf(n)&&bOf(n).pct_above_20dma>=50);
+   const risky=list.filter(n=>bOf(n)&&bOf(n).pct_above_20dma<50);
+   const etf=list.filter(n=>!bOf(n));
+   el.innerHTML='<div class="sub" style="color:var(--green)">✅ breadth ฟื้นแล้ว — เข้าเกณฑ์น่าจับตา</div>'+render(good)
+    +'<div class="sub" style="color:var(--red)">⚠️ breadth ยังเสี่ยง — แค่ลงช้ากว่าตลาด อย่าเพิ่งแตะ</div>'+render(risky)
+    +(etf.length?'<div class="sub">Sector ETF (ดู breadth จากธีมย่อยข้างใน)</div>'+render(etf):'');
+  } else { el.innerHTML=render(list); }
+ });
+})();
+
+// ---- Dynamic example (evergreen-safe) ----
+(function(){
+ const w = names.filter(n=>M.themes[n].quad==='Weakening' && !M.is_sector[n])
+   .sort((a,b)=>M.themes[b].r3m-M.themes[a].r3m);
+ const el = document.getElementById('dyn-weak');
+ if(el && w.length) el.textContent = 'ตัวอย่างรอบนี้: ' + w.slice(0,2).join(', ') + ' (3M ยังบวกแรง แต่โมเมนตัมแผ่วแล้ว)';
+})();
+</script></body></html>
