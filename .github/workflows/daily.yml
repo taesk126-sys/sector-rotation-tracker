@@ -9,20 +9,29 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
-      - name: Build dashboard
+      - name: Fetch, compute, validate, build
         run: |
           python fetch.py
           python compute.py
+          python validate_independent.py
           python build_html.py
+      - name: Upload raw data snapshot (90-day audit trail)
+        uses: actions/upload-artifact@v4
+        with:
+          name: raw-data-${{ github.run_id }}
+          path: |
+            prices.csv
+            volume.csv
+          retention-days: 90
       - name: Commit and push
         run: |
           git config user.name "rotation-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add index.html
+          git add index.html metrics.json universe.json manifest.json data_meta.json
           git commit -m "Daily update $(date -u +%F)" || echo "no changes"
           git push
