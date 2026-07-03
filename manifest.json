@@ -1,0 +1,13 @@
+{
+ "generated_utc": "2026-07-03T14:27:58.840442+00:00",
+ "git_commit": "local",
+ "python": "3.10.12",
+ "sha256": {
+  "prices.csv": "2426634152c83e75514807774f9a65607ef98ccb8f981caccb66b9f616a8fbec",
+  "volume.csv": "59fce226d124446d587d751e9bb0fef89c1171af7f2bd730d37a36a8b909bf4d",
+  "universe.json": "a311557d941ac76fb7d15c208235d9ec2751ac28c5288f98b1f4838f9e12c40c",
+  "metrics.json": "f8696993a897d0be10a5fc67df46857bd7dd2abaf7ad269942bab72b87817f2c",
+  "index.html": "82db86fd4e485b77c96936209137707930ec676688a88bafbd2754f9123c04ad"
+ },
+ "asof": "2026-07-02"
+}

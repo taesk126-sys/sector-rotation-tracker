@@ -1,0 +1,12 @@
+{
+ "data_provider": "Yahoo Finance (yfinance)",
+ "price_basis": "Adjusted Close (splits+dividends, total return)",
+ "yfinance_version": "1.5.1",
+ "pandas_version": "2.3.3",
+ "python_version": "3.10.12",
+ "download_utc": "2026-07-03T14:27:49.048687+00:00",
+ "asof_market_date": "2026-07-02",
+ "tickers_requested": 148,
+ "tickers_ok": 148,
+ "rows": 187
+}

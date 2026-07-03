@@ -58,23 +58,23 @@ canvas{max-width:100%}
 </style></head><body>
 <header><h1>🔄 US Sector &amp; Theme Rotation Tracker</h1><div id="asof"></div></header>
 <div class="wrap">
-<div class="card"><h2>Relative Rotation Graph (เทียบ SPY, หางย้อนหลัง 8 สัปดาห์)</h2>
+<div class="card"><h2>RRG-style Rotation Map (custom) — เทียบ SPY, หางย้อนหลัง 8 สัปดาห์</h2>
 <div class="tabs" id="rrgTabs"><button data-f="theme" class="on">ธีม</button><button data-f="sector">Sector ETF</button><button data-f="all">ทั้งหมด</button></div>
 <canvas id="rrg" height="330"></canvas>
 <div class="note">แกน X = RS-Ratio (แรงเทียบตลาดปัจจุบัน) • แกน Y = RS-Momentum (โมเมนตัมของแรงนั้น) •
-เขียว Leading = แข็งและยังแรงขึ้น • ฟ้า Improving = ยังอ่อนแต่กำลังฟื้น (เงินเริ่มไหลเข้า) •
-เหลือง Weakening = ยังแข็งแต่แผ่ว (เงินเริ่มไหลออก) • แดง Lagging = อ่อนและยังแย่ลง จุดใหญ่คือสัปดาห์ล่าสุด</div></div>
-<div class="card"><h2>Heatmap ผลตอบแทนรายธีม (equal-weight)</h2>
-<div class="tabs" id="hmTabs"><button data-k="r1m" class="on">เรียงตาม 1M</button><button data-k="r1w">1W</button><button data-k="r1d">1D</button><button data-k="rel1m">1M เทียบ SPY</button></div>
-<table class="hm" id="hmT"></table></div>
+เขียว Leading = แข็งและยังแรงขึ้น • ฟ้า Improving = ยังอ่อนแต่โมเมนตัมกำลังฟื้น • เหลือง Weakening = ยังแข็งแต่แรงส่งแผ่วลง • แดง Lagging = อ่อนและยังแย่ลง จุดใหญ่คือสัปดาห์ล่าสุด<br>สูตร (custom ไม่ใช่ JdK มาตรฐาน สเกลจึงกว้างกว่า): RS-Ratio = 100×(idx/SPY)÷SMA63วันทำการ • RS-Momentum = 100×RSRatio_t÷RSRatio_(t−10วันทำการ) • จุดหางห่างกัน 5 วันทำการ ยึด session ล่าสุด</div></div>
+<div class="card"><h2>Heatmap ผลตอบแทนรายธีม (equal-weight daily-rebalanced)</h2>
+<div class="tabs" id="hmTabs"><button data-k="r1m" class="on">เรียงตาม 1M</button><button data-k="r1w">1W</button><button data-k="r1d">1D</button><button data-k="rel1m">1M Excess vs SPY</button></div>
+<table class="hm" id="hmT"></table>
+<div class="note">1W/1M/3M = 5/21/63 วันทำการ • ตะกร้าธีม = equal-weight daily-rebalanced analytical basket (ไม่รวมต้นทุนซื้อขาย ไม่ใช่ผลตอบแทน ETF จริง) • ผลตอบแทนเป็น total return (Adjusted Close รวมปันผล) จึงอาจสูงกว่ากราฟราคาบน TradingView เล็กน้อยในกลุ่มปันผลสูง • คอลัมน์ Excess = ลบกันตรง ๆ หน่วย percentage points</div></div>
 <div class="card full"><h2>🎯 Momentum Playbook — เล่นตาม rotation ยังไง</h2>
 <div class="pb">
 <div class="pbcol" style="border-top:3px solid var(--green)"><h3 style="color:var(--green)">Leading — ถือต่อ / เล่นโมเมนตัม</h3>
 <p>กลุ่มที่แข็งกว่าตลาดและยังแรงขึ้น เหมาะสุดสำหรับสาย momentum แต่ต้องดู RS-Momentum (แกน Y) ประกอบ ถ้าเริ่มโค้งลงใกล้ 100 แปลว่ากำลังจะเปลี่ยนเป็น Weakening ให้เตรียมแผนออก</p><div id="q-Leading"></div></div>
 <div class="pbcol" style="border-top:3px solid var(--blue)"><h3 style="color:var(--blue)">Improving — จุดเข้าที่ risk/reward ดีสุด</h3>
-<p>ยังอ่อนกว่าตลาดแต่โมเมนตัมกลับทิศแล้ว คือ "เงินเริ่มไหลเข้าแต่ราคายังไม่แพง" สายซื้อก่อนฝูงชนเล่นตรงนี้ จุดยืนยันคือหางบนกราฟชี้ขึ้นต่อเนื่อง 2-3 สัปดาห์ + breadth เริ่มฟื้น</p><div id="q-Improving"></div></div>
+<p>ยังอ่อนกว่าตลาดแต่โมเมนตัมเชิงเปรียบเทียบกลับทิศแล้ว คือ "ราคายังไม่แพงแต่แรงส่งเริ่มฟื้น" สายซื้อก่อนฝูงชนเล่นตรงนี้ จุดยืนยันคือหางบนกราฟชี้ขึ้นต่อเนื่อง 2-3 สัปดาห์ + breadth เริ่มฟื้น</p><div id="q-Improving"></div></div>
 <div class="pbcol" style="border-top:3px solid var(--yellow)"><h3 style="color:var(--yellow)">Weakening — ทยอยขาย ห้ามเพิ่มไม้</h3>
-<p>ยังแข็งกว่าตลาดอยู่ (ผลตอบแทนสะสมยังสวย) แต่แรงส่งแผ่วลง คือโซนที่คนติดดอยเยอะสุดเพราะ "ผลตอบแทนสะสมยังสวย กราฟยังดูดี" ทั้งที่เงินเริ่มออกแล้ว ถ้าจะช้อนให้รอมันวนลง Lagging แล้วกลับขึ้น Improving ก่อน <span class="dyn" id="dyn-weak"></span></p><div id="q-Weakening"></div></div>
+<p>ยังแข็งกว่าตลาดอยู่ (ผลตอบแทนสะสมยังสวย) แต่แรงส่งแผ่วลง คือโซนที่คนติดดอยเยอะสุดเพราะ "ผลตอบแทนสะสมยังสวย กราฟยังดูดี" ทั้งที่แรงส่งเทียบตลาดแผ่วลงแล้ว ถ้าจะช้อนให้รอมันวนลง Lagging แล้วกลับขึ้น Improving ก่อน <span class="dyn" id="dyn-weak"></span></p><div id="q-Weakening"></div></div>
 <div class="pbcol" style="border-top:3px solid var(--red)"><h3 style="color:var(--red)">Lagging — ห้ามรีบช้อน</h3>
 <p>อ่อนกว่าตลาดและยังแย่ลง สาย momentum ข้ามไปเลย เด้งแรงรายสัปดาห์ในโซนนี้ส่วนใหญ่คือ dead cat bounce จะน่าสนใจก็ต่อเมื่อขยับข้ามขึ้นไป Improving เท่านั้น</p><div id="q-Lagging"></div></div>
 </div>
@@ -82,11 +82,11 @@ canvas{max-width:100%}
 <div class="card full"><h2>Breadth &amp; Volume — สัญญาณเตือนก่อนราคา</h2>
 <table class="hm" id="brT"></table>
 <div class="note">% เหนือ 20DMA ต่ำ = สมาชิกในธีมหลุดแนวโน้มระยะสั้นเกือบหมด (แม้ราคาตะกร้ายังไม่พังมาก) •
-Dollar Volume Ratio &gt; 1 = เม็ดเงินซื้อขาย 5 วันล่าสุดหนาแน่นกว่าค่าเฉลี่ยเดือนก่อน = เงินกำลังวิ่งเข้ามาเล่นกลุ่มนี้</div></div>
+Dollar Volume &gt; 1 = กิจกรรมการซื้อขาย 5 วันล่าสุดหนาแน่นกว่าค่าเฉลี่ยเดือนก่อน (บอกระดับ activity ไม่บอกทิศทางซื้อ/ขาย; คำนวณจาก Adjusted Close × Volume เป็น proxy)</div></div>
 </div>
 <script>
 const M = __DATA__;
-document.getElementById('asof').textContent = 'ข้อมูล ณ ' + M.asof + ' (ราคาปิด/ล่าสุด) • SPY 1D ' + M.spy.r1d + '% | 1M ' + M.spy.r1m + '% | 3M ' + M.spy.r3m + '%';
+document.getElementById('asof').textContent = 'ข้อมูล ณ ' + M.asof + (M.meta&&M.meta.download_utc?' (ดึง '+M.meta.download_utc.slice(0,16)+'Z)':'') + ' • Adjusted Close รวมปันผล/split (total return) • SPY 1D ' + M.spy.r1d + '% | 1M ' + M.spy.r1m + '% | 3M ' + M.spy.r3m + '%';
 const QC = {Leading:'#3fb950',Improving:'#58a6ff',Weakening:'#d29922',Lagging:'#f85149'};
 const names = Object.keys(M.themes);
 
@@ -128,7 +128,7 @@ function cellColor(v){ if(v===null||isNaN(v)) return 'transparent';
 function drawHM(sortKey){
   const t=document.getElementById('hmT');
   const rows=[...names].sort((a,b)=>M.themes[b][sortKey]-M.themes[a][sortKey]);
-  let h='<tr><th>ธีม / Sector</th><th>1D%</th><th>1W%</th><th>1M%</th><th>3M%</th><th>1M vs SPY</th></tr>';
+  let h='<tr><th>ธีม / Sector</th><th>1D%</th><th>1W%</th><th>1M%</th><th>3M%</th><th>1M Excess (pp)</th></tr>';
   rows.forEach(n=>{const d=M.themes[n];
     h+='<tr><td class="name">'+n+'<span class="badge q-'+d.quad+'">'+d.quad+'</span></td>';
     ['r1d','r1w','r1m','r3m','rel1m'].forEach(k=>{h+='<td style="background:'+cellColor(d[k])+'">'+(d[k]>0?'+':'')+d[k].toFixed(2)+'</td>'});
@@ -140,8 +140,8 @@ drawHM('r1m');
 // ---- Breadth ----
 (function(){const t=document.getElementById('brT');
  const rows=Object.keys(M.breadth).sort((a,b)=>M.breadth[b].pct_above_20dma-M.breadth[a].pct_above_20dma);
- let h='<tr><th>ธีม</th><th style="width:38%">% สมาชิกเหนือ 20DMA</th><th>Dollar Vol Ratio (5D/20D)</th></tr>';
- rows.forEach(n=>{const d=M.breadth[n];const c=d.pct_above_20dma>=60?'#3fb950':d.pct_above_20dma>=35?'#d29922':'#f85149';
+ let h='<tr><th>ธีม</th><th style="width:38%">% สมาชิกเหนือ 20DMA</th><th>Dollar Volume: 5D vs avg 5D ของ 20D ก่อนหน้า</th></tr>';
+ rows.forEach(n=>{const d=M.breadth[n];const c=d.pct_above_20dma>=50?'#3fb950':d.pct_above_20dma>=30?'#d29922':'#f85149';
   h+='<tr><td class="name">'+n+'</td><td><div class="bcell"><div class="bar"><i style="width:'+d.pct_above_20dma+'%;background:'+c+'"></i></div><span style="color:'+c+'">'+d.pct_above_20dma+'%</span></div></td>';
   const vc=d.dollar_vol_ratio>=1.05?'#3fb950':d.dollar_vol_ratio<=0.9?'#f85149':'#8b949e';
   h+='<td style="color:'+vc+'">'+d.dollar_vol_ratio.toFixed(2)+'×</td></tr>'});
@@ -173,10 +173,11 @@ drawHM('r1m');
 
 // ---- Dynamic example (evergreen-safe) ----
 (function(){
- const w = names.filter(n=>M.themes[n].quad==='Weakening' && !M.is_sector[n])
+ const w = names.filter(n=>M.themes[n].quad==='Weakening' && !M.is_sector[n] && M.themes[n].r3m > 5)
    .sort((a,b)=>M.themes[b].r3m-M.themes[a].r3m);
  const el = document.getElementById('dyn-weak');
- if(el && w.length) el.textContent = 'ตัวอย่างรอบนี้: ' + w.slice(0,2).join(', ') + ' (3M ยังบวกแรง แต่โมเมนตัมแผ่วแล้ว)';
+ if(el && w.length) el.textContent = 'ตัวอย่างรอบนี้: ' + w.slice(0,2).join(', ') + ' (3M ยังบวกเกิน +5% แต่โมเมนตัมแผ่วแล้ว)';
+ else if(el) el.textContent = 'รอบนี้ไม่มีธีมที่เข้าเงื่อนไขนี้ชัด ๆ';
 })();
 </script></body></html>"""
 
@@ -226,4 +227,16 @@ html = html.replace("</div>\n<script>", appendix + "</div>\n<script>")
 
 out = "index.html"
 open(out, "w").write(html)
-print("written", out, len(html), "bytes")
+
+# ---- manifest.json: audit trail (hashes, versions, commit) ----
+import hashlib, os, sys, datetime, platform
+def sha(p):
+    try: return hashlib.sha256(open(p,"rb").read()).hexdigest()
+    except FileNotFoundError: return None
+manifest = {"generated_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "git_commit": os.environ.get("GITHUB_SHA","local"),
+            "python": sys.version.split()[0],
+            "sha256": {f: sha(f) for f in ["prices.csv","volume.csv","universe.json","metrics.json","index.html"]},
+            "asof": m.get("asof")}
+json.dump(manifest, open("manifest.json","w"), indent=1)
+print("written", out, len(html), "bytes | manifest.json written")
