@@ -36,7 +36,7 @@ tickers = sorted(set(sum(BASKETS.values(), []) + list(SECTORS.values()) + ["SPY"
 now_utc = datetime.datetime.now(datetime.timezone.utc)
 print(len(tickers), "tickers | run", now_utc.isoformat())
 
-data = yf.download(tickers, period="9mo", interval="1d", auto_adjust=True, progress=False, threads=True)
+data = yf.download(tickers, period="12mo", interval="1d", auto_adjust=True, progress=False, threads=True)
 px = data["Close"]; vol = data["Volume"]
 
 # ---- GUARD 1: no missing tickers (fail-fast, never publish partial baskets) ----

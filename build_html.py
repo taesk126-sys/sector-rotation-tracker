@@ -59,10 +59,12 @@ canvas{max-width:100%}
 <header><h1>🔄 US Sector &amp; Theme Rotation Tracker</h1><div id="asof"></div></header>
 <div class="wrap">
 <div class="card"><h2>RRG-style Rotation Map (custom) — เทียบ SPY, หางย้อนหลัง 8 สัปดาห์</h2>
-<div class="tabs" id="rrgTabs"><button data-f="theme" class="on">ธีม</button><button data-f="sector">Sector ETF</button><button data-f="all">ทั้งหมด</button></div>
+<div class="tabs" id="rrgTabs"><button data-f="theme" class="on">ธีม</button><button data-f="sector">Sector ETF</button><button data-f="all">ทั้งหมด</button>
+<span style="width:10px"></span>
+<button data-m="norm" class="on mode">Normalized</button><button data-m="raw" class="mode">Raw ratio</button></div>
 <canvas id="rrg" height="330"></canvas>
 <div class="note">แกน X = RS-Ratio (แรงเทียบตลาดปัจจุบัน) • แกน Y = RS-Momentum (โมเมนตัมของแรงนั้น) •
-เขียว Leading = แข็งและยังแรงขึ้น • ฟ้า Improving = ยังอ่อนแต่โมเมนตัมกำลังฟื้น • เหลือง Weakening = ยังแข็งแต่แรงส่งแผ่วลง • แดง Lagging = อ่อนและยังแย่ลง จุดใหญ่คือสัปดาห์ล่าสุด<br>สูตร (custom ไม่ใช่ JdK มาตรฐาน สเกลจึงกว้างกว่า): RS-Ratio = 100×(idx/SPY)÷SMA63วันทำการ • RS-Momentum = 100×RSRatio_t÷RSRatio_(t−10วันทำการ) • จุดหางห่างกัน 5 วันทำการ ยึด session ล่าสุด</div></div>
+เขียว Leading = แข็งและยังแรงขึ้น • ฟ้า Improving = ยังอ่อนแต่โมเมนตัมกำลังฟื้น • เหลือง Weakening = ยังแข็งแต่แรงส่งแผ่วลง • แดง Lagging = อ่อนและยังแย่ลง จุดใหญ่คือสัปดาห์ล่าสุด<br>สองโหมด (quadrant เหมือนกันเป๊ะ ต่างแค่สเกล): <b>Normalized</b> = ระยะห่างจากค่าเฉลี่ย 63 วันของตัวเอง หารด้วยความผันผวนของตัวเอง (1 หน่วย = 1 SD) — เทียบข้ามธีมแฟร์ เพราะกลุ่มเหวี่ยงแรงไม่ได้เปรียบ • <b>Raw</b> = RS-Ratio = 100×(idx/SPY)÷SMA63 และ RS-Momentum = ROC 10 วันทำการ — ไว้เทียบธีมเดียวกับอดีตตัวเอง • ทั้งคู่เป็น custom ไม่ใช่ JdK มาตรฐาน • จุดหางห่างกัน 5 วันทำการ ยึด session ล่าสุด</div></div>
 <div class="card"><h2>Heatmap ผลตอบแทนรายธีม (equal-weight daily-rebalanced)</h2>
 <div class="tabs" id="hmTabs"><button data-k="r1m" class="on">เรียงตาม 1M</button><button data-k="r1w">1W</button><button data-k="r1d">1D</button><button data-k="rel1m">1M Excess vs SPY</button></div>
 <table class="hm" id="hmT"></table>
@@ -91,12 +93,16 @@ const QC = {Leading:'#3fb950',Improving:'#58a6ff',Weakening:'#d29922',Lagging:'#
 const names = Object.keys(M.themes);
 
 // ---- RRG ----
-let rrgChart=null;
-function drawRRG(filter){
+let rrgChart=null, rrgF='theme', rrgM='norm';
+function drawRRG(){
+  const filter = rrgF;
+  const SRC = (rrgM==='norm' && M.rrg_norm) ? M.rrg_norm : M.rrg;
+  const xt = rrgM==='norm' ? 'RS-Ratio (normalized: 1 หน่วย = 1 SD ของตัวเอง)' : 'RS-Ratio (raw: % เทียบค่าเฉลี่ย 63 วัน)';
+  const yt = rrgM==='norm' ? 'RS-Momentum (normalized)' : 'RS-Momentum (raw)';
   const sel = names.filter(n => filter==='all' || (filter==='sector')===M.is_sector[n]);
   const ds = [];
   sel.forEach(n=>{
-    const pts = M.rrg[n]; const q = M.themes[n].quad; const c = QC[q];
+    const pts = SRC[n]; const q = M.themes[n].quad; const c = QC[q];
     ds.push({label:n, data:pts.map(p=>({x:p[0],y:p[1]})), showLine:true, borderColor:c+'55',
       backgroundColor:pts.map((_,i)=> i===pts.length-1 ? c : c+'44'),
       pointRadius:pts.map((_,i)=> i===pts.length-1 ? 7 : 2.5), borderWidth:1.5, tension:.3});
@@ -105,8 +111,8 @@ function drawRRG(filter){
   const ctx = document.getElementById('rrg');
   rrgChart = new Chart(ctx,{type:'scatter',data:{datasets:ds},options:{
     animation:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:i=>i.dataset.label+' ('+M.themes[i.dataset.label].quad+') RS '+i.parsed.x.toFixed(1)+' / Mom '+i.parsed.y.toFixed(1)}}},
-    scales:{x:{title:{display:true,text:'RS-Ratio',color:'#8b949e'},grid:{color:'#21262d'},ticks:{color:'#8b949e'}},
-            y:{title:{display:true,text:'RS-Momentum',color:'#8b949e'},grid:{color:'#21262d'},ticks:{color:'#8b949e'}}}
+    scales:{x:{title:{display:true,text:xt,color:'#8b949e'},grid:{color:'#21262d'},ticks:{color:'#8b949e'}},
+            y:{title:{display:true,text:yt,color:'#8b949e'},grid:{color:'#21262d'},ticks:{color:'#8b949e'}}}
   },plugins:[{id:'quad',beforeDraw(c){const {ctx,chartArea:a,scales:{x,y}}=c;if(!a)return;
     const cx=x.getPixelForValue(100),cy=y.getPixelForValue(100);ctx.save();
     ctx.fillStyle='#3fb95012';ctx.fillRect(cx,a.top,a.right-cx,cy-a.top);
@@ -119,8 +125,13 @@ function drawRRG(filter){
     ctx.fillText('LAGGING',a.left+6,a.bottom-6);ctx.fillText('WEAKENING',a.right-76,a.bottom-6);ctx.restore();}}]});
   // label points
 }
-document.querySelectorAll('#rrgTabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#rrgTabs button').forEach(x=>x.classList.remove('on'));b.classList.add('on');drawRRG(b.dataset.f)});
-drawRRG('theme');
+document.querySelectorAll('#rrgTabs button').forEach(b=>b.onclick=()=>{
+  if(b.dataset.f){ rrgF=b.dataset.f;
+    document.querySelectorAll('#rrgTabs button[data-f]').forEach(x=>x.classList.remove('on')); b.classList.add('on'); }
+  if(b.dataset.m){ rrgM=b.dataset.m;
+    document.querySelectorAll('#rrgTabs button[data-m]').forEach(x=>x.classList.remove('on')); b.classList.add('on'); }
+  drawRRG();});
+drawRRG();
 
 // ---- Heatmap ----
 function cellColor(v){ if(v===null||isNaN(v)) return 'transparent';

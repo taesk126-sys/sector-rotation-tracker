@@ -9,7 +9,10 @@ HORIZONS = {"r1d": 1, "r1w": 5, "r1m": 21, "r3m": 63}
 #   RS-Momentum = 100 * RSRatio_t / RSRatio_{t-MOM_LAG sessions}       on DAILY series
 #   trail: TRAIL_N points, every TRAIL_STEP sessions, anchored at LATEST session
 RS_WINDOW, MOM_LAG, TRAIL_N, TRAIL_STEP = 63, 10, 8, 5
-MIN_SESSIONS = RS_WINDOW + MOM_LAG + (TRAIL_N - 1) * TRAIL_STEP + 2   # = 110
+# Normalized mode (JdK-style approximation, SIGN-PRESERVING vs 100 -> quadrants identical to raw):
+#   ratio_norm = 100 + (rs - SMA63(rs)) / SD63(rs)              [1 unit = 1 rolling std]
+#   mom_norm   = 100 + d / SD63(d),  d = ratio_raw_t - ratio_raw_{t-10}
+MIN_SESSIONS = RS_WINDOW + MOM_LAG + RS_WINDOW + (TRAIL_N - 1) * TRAIL_STEP + 2   # = 173 (needs 12mo fetch)
 # Basket methodology: EQUAL-WEIGHT DAILY-REBALANCED analytical basket
 #   basket_index_t = cumprod(1 + mean_members(daily_return))
 #   (no transaction costs; NOT an investable ETF return)
@@ -55,13 +58,21 @@ def ret(s, n): return (s.iloc[-1] / s.iloc[-1-n] - 1) * 100
 rows  = {name: {h: ret(s, n) for h, n in HORIZONS.items()} for name, s in idx.items()}
 spy_r = {h: ret(spy, n) for h, n in HORIZONS.items()}
 
-def rrg(s):
+def rrg_series(s):
     rs = s / spy
-    rs_ratio = 100 * rs / rs.rolling(RS_WINDOW).mean()
-    rs_mom   = 100 * rs_ratio / rs_ratio.shift(MOM_LAG)
-    return [[round(float(rs_ratio.iloc[-1-k*TRAIL_STEP]), 2), round(float(rs_mom.iloc[-1-k*TRAIL_STEP]), 2)]
-            for k in range(TRAIL_N-1, -1, -1)]
-rrg_data = {name: rrg(s) for name, s in idx.items()}
+    sma, sd = rs.rolling(RS_WINDOW).mean(), rs.rolling(RS_WINDOW).std()
+    ratio_raw = 100 * rs / sma
+    mom_raw   = 100 * ratio_raw / ratio_raw.shift(MOM_LAG)
+    ratio_norm = 100 + (rs - sma) / sd
+    d = ratio_raw - ratio_raw.shift(MOM_LAG)
+    mom_norm   = 100 + d / d.rolling(RS_WINDOW).std()
+    trail = lambda a, b: [[round(float(a.iloc[-1-k*TRAIL_STEP]), 2), round(float(b.iloc[-1-k*TRAIL_STEP]), 2)]
+                          for k in range(TRAIL_N-1, -1, -1)]
+    return trail(ratio_raw, mom_raw), trail(ratio_norm, mom_norm)
+
+rrg_data, rrg_norm = {}, {}
+for name, s in idx.items():
+    rrg_data[name], rrg_norm[name] = rrg_series(s)
 
 breadth = {}
 for name, mem in BASKETS.items():
@@ -81,11 +92,11 @@ warnings = [f"{n}: RS-Ratio {rrg_data[n][-1][0]}" for n in idx.columns
 
 out = {"asof": str(idx.index[-1].date()),
        "spy": {k: round(v, 2) for k, v in spy_r.items()},
-       "themes": {}, "rrg": rrg_data, "breadth": breadth,
+       "themes": {}, "rrg": rrg_data, "rrg_norm": rrg_norm, "breadth": breadth,
        "is_sector": {n: (n in SECTORS) for n in idx.columns},
        "meta": {**data_meta,
                 "methodology": "equal-weight daily-rebalanced analytical basket; adjusted close (total return); horizons 1/5/21/63 trading sessions; RRG custom SMA63/ROC10 daily; rel1m arithmetic pp",
-                "params": {"RS_WINDOW": RS_WINDOW, "MOM_LAG": MOM_LAG, "TRAIL_N": TRAIL_N, "TRAIL_STEP": TRAIL_STEP},
+                "params": {"RS_WINDOW": RS_WINDOW, "MOM_LAG": MOM_LAG, "TRAIL_N": TRAIL_N, "TRAIL_STEP": TRAIL_STEP, "rrg_modes": "raw=100*rs/SMA63 & ROC10 | norm=100+(rs-SMA63)/SD63 & 100+d10/SD63(d10), sign-preserving"},
                 "ffilled_cells": n_gaps, "rs_sanity_warnings": warnings}}
 for name in idx.columns:
     r = rows[name]; x, y = rrg_data[name][-1]
@@ -95,6 +106,8 @@ for name in idx.columns:
 # ---- built-in asserts before publishing ----
 for n, d in out["themes"].items():
     assert d["quad"] == quad(*out["rrg"][n][-1]), f"quadrant mismatch {n}"
+    xr, yr = out["rrg"][n][-1]; xn, yn = out["rrg_norm"][n][-1]
+    assert (xr >= 100) == (xn >= 100) and (yr >= 100) == (yn >= 100), f"norm/raw quadrant sign mismatch {n}"
     assert all(v is not None and not (isinstance(v, float) and np.isnan(v)) for v in d.values() if not isinstance(v, str)), f"NaN in {n}"
 json.dump(out, open("metrics.json", "w"))
 if warnings: print("SANITY WARNINGS:", warnings)

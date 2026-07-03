@@ -37,6 +37,10 @@ quad = lambda x,y: ("Leading" if x>=100 and y>=100 else "Improving" if x<100 and
 qbad = [n for n in m["themes"] if quad(*m["rrg"][n][-1]) != m["themes"][n]["quad"]]
 if qbad: fails.append(("quadrant","label",qbad,None))
 print("quadrant labels:", "36/36 consistent" if not qbad else f"MISMATCH {qbad}")
+# normalized mode must land in the SAME quadrant as raw for every series
+nbad = [n for n in m["themes"] if "rrg_norm" in m and quad(*m["rrg_norm"][n][-1]) != m["themes"][n]["quad"]]
+if nbad: fails.append(("rrg_norm","quadrant",nbad,None))
+print("norm-vs-raw quadrants:", "identical" if not nbad else f"MISMATCH {nbad}")
 
 if fails:
     print(f"\nVALIDATION FAILED ({len(fails)} issues) — DO NOT PUBLISH"); sys.exit(1)
