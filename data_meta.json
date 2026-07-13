@@ -4,8 +4,8 @@
  "yfinance_version": "1.5.1",
  "pandas_version": "2.3.3",
  "python_version": "3.12.13",
- "download_utc": "2026-07-10T23:12:28.404965+00:00",
- "asof_market_date": "2026-07-10",
+ "download_utc": "2026-07-13T23:11:19.143737+00:00",
+ "asof_market_date": "2026-07-13",
  "tickers_requested": 148,
  "tickers_ok": 148,
  "rows": 251
