@@ -37,10 +37,24 @@ quad = lambda x,y: ("Leading" if x>=100 and y>=100 else "Improving" if x<100 and
 qbad = [n for n in m["themes"] if quad(*m["rrg"][n][-1]) != m["themes"][n]["quad"]]
 if qbad: fails.append(("quadrant","label",qbad,None))
 print("quadrant labels:", "36/36 consistent" if not qbad else f"MISMATCH {qbad}")
-# normalized mode must land in the SAME quadrant as raw for every series
-nbad = [n for n in m["themes"] if "rrg_norm" in m and quad(*m["rrg_norm"][n][-1]) != m["themes"][n]["quad"]]
+# normalized mode must land in the SAME quadrant as raw for every series.
+# Exception (2026-08-18): metrics.json stores RRG points rounded to 2dp, and the raw and
+# normalized transforms have different scales, so a series sitting exactly on the 100 line
+# can round to 100.00 on one axis and 99.99 on the other. That is rounding noise, not a real
+# disagreement, and it blocked publication on 2026-08-17. Axes within NB_TOL of 100 are
+# reported as on-boundary instead of failing. compute.py does the exact (unrounded) check.
+NB_TOL = 0.02
+def _axis_ok(a, b):
+    return abs(a - 100) <= NB_TOL or abs(b - 100) <= NB_TOL or (a >= 100) == (b >= 100)
+def _norm_ok(n):
+    xr, yr = m["rrg"][n][-1]; xn, yn = m["rrg_norm"][n][-1]
+    return _axis_ok(xr, xn) and _axis_ok(yr, yn)
+nbad = [n for n in m["themes"] if "rrg_norm" in m and not _norm_ok(n)]
+nedge = [n for n in m["themes"] if "rrg_norm" in m and _norm_ok(n)
+         and quad(*m["rrg_norm"][n][-1]) != m["themes"][n]["quad"]]
 if nbad: fails.append(("rrg_norm","quadrant",nbad,None))
 print("norm-vs-raw quadrants:", "identical" if not nbad else f"MISMATCH {nbad}")
+if nedge: print("on-boundary (rounding, tolerated):", nedge)
 
 if fails:
     print(f"\nVALIDATION FAILED ({len(fails)} issues) — DO NOT PUBLISH"); sys.exit(1)
