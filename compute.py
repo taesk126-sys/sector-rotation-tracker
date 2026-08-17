@@ -68,11 +68,13 @@ def rrg_series(s):
     mom_norm   = 100 + d / d.rolling(RS_WINDOW).std()
     trail = lambda a, b: [[round(float(a.iloc[-1-k*TRAIL_STEP]), 2), round(float(b.iloc[-1-k*TRAIL_STEP]), 2)]
                           for k in range(TRAIL_N-1, -1, -1)]
-    return trail(ratio_raw, mom_raw), trail(ratio_norm, mom_norm)
+    exact = (float(ratio_raw.iloc[-1]), float(mom_raw.iloc[-1]),
+             float(ratio_norm.iloc[-1]), float(mom_norm.iloc[-1]))
+    return trail(ratio_raw, mom_raw), trail(ratio_norm, mom_norm), exact
 
-rrg_data, rrg_norm = {}, {}
+rrg_data, rrg_norm, rrg_exact = {}, {}, {}
 for name, s in idx.items():
-    rrg_data[name], rrg_norm[name] = rrg_series(s)
+    rrg_data[name], rrg_norm[name], rrg_exact[name] = rrg_series(s)
 
 breadth = {}
 for name, mem in BASKETS.items():
@@ -104,11 +106,24 @@ for name in idx.columns:
                            "rel1m": round(r["r1m"] - spy_r["r1m"], 2), "quad": quad(x, y)}
 
 # ---- built-in asserts before publishing ----
+# NOTE (2026-08-18): the raw/norm sign check MUST run on UNROUNDED values. trail() rounds to
+# 2dp, and the two transforms have different scales (raw deviates from 100 roughly 4-10x more
+# than norm), so a theme sitting exactly on the 100 line can round to 100.00 on one side and
+# 99.99 on the other. That is a rounding artifact, not a real mismatch. It broke the 2026-08-17
+# run on "Pharma & Managed Care". Themes on the line are now logged instead of killing the run.
+BOUNDARY_TOL = 0.02
+boundary_notes = []
 for n, d in out["themes"].items():
     assert d["quad"] == quad(*out["rrg"][n][-1]), f"quadrant mismatch {n}"
-    xr, yr = out["rrg"][n][-1]; xn, yn = out["rrg_norm"][n][-1]
-    assert (xr >= 100) == (xn >= 100) and (yr >= 100) == (yn >= 100), f"norm/raw quadrant sign mismatch {n}"
+    xr_e, yr_e, xn_e, yn_e = rrg_exact[n]
+    assert (xr_e >= 100) == (xn_e >= 100) and (yr_e >= 100) == (yn_e >= 100), \
+        f"norm/raw quadrant sign mismatch {n} (exact raw={xr_e:.6f},{yr_e:.6f} norm={xn_e:.6f},{yn_e:.6f})"
+    xr, yr = out["rrg"][n][-1]
+    if min(abs(xr - 100), abs(yr - 100)) <= BOUNDARY_TOL:
+        boundary_notes.append(f"{n}: on 100-line (x={xr}, y={yr})")
     assert all(v is not None and not (isinstance(v, float) and np.isnan(v)) for v in d.values() if not isinstance(v, str)), f"NaN in {n}"
+out["meta"]["boundary_notes"] = boundary_notes
+if boundary_notes: print("BOUNDARY NOTES:", boundary_notes)
 json.dump(out, open("metrics.json", "w"))
 if warnings: print("SANITY WARNINGS:", warnings)
 print("AS OF:", out["asof"], "| themes:", len(out["themes"]), "| all asserts passed")
