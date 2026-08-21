@@ -1,13 +1,13 @@
 {
- "generated_utc": "2026-08-20T22:42:52.423383+00:00",
- "git_commit": "9c7e10ca4386db389c0164e056178b0d21808038",
+ "generated_utc": "2026-08-21T22:38:58.759399+00:00",
+ "git_commit": "a34735acd3fbf3f55c2a3c9861f39cc1f9654af8",
  "python": "3.12.14",
  "sha256": {
-  "prices.csv": "7394b99c9fc1d01b4b41a28286830c520b16bd6afd0159f2bcf7e24b139beba8",
-  "volume.csv": "3af697f08fb8a6d26a03ea18d562ec460b4f2314c33b79603d6a8150d27dbba8",
+  "prices.csv": "ecd32851e9776f8298e2b71dfa3d168d3703afc6be84ffce1ddad13a9a300742",
+  "volume.csv": "7c6a49de3552630c4a792866ff2d296cff917b89dba13851ca912366f46b17f2",
   "universe.json": "a311557d941ac76fb7d15c208235d9ec2751ac28c5288f98b1f4838f9e12c40c",
-  "metrics.json": "70255ab81e6ba405f9173dc93face839db5b6c544ee7e83ffa683c05cb1173d6",
-  "index.html": "112b4ac08742c34db5635b3131b48cc5833d253b32a639c80d15244d97a33a08"
+  "metrics.json": "e86ff167bb9dfe6d7e54f242a4ce1ad3e9bbdacf7f8068203b478f3779d998ac",
+  "index.html": "1b196ca5f58ac95437325f2a3aa66a6b85ffa56f79aedeb5ccf3f95321a288ba"
  },
- "asof": "2026-08-20"
+ "asof": "2026-08-21"
 }
