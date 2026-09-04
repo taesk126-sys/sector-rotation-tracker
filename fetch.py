@@ -37,7 +37,18 @@ now_utc = datetime.datetime.now(datetime.timezone.utc)
 print(len(tickers), "tickers | run", now_utc.isoformat())
 
 data = yf.download(tickers, period="12mo", interval="1d", auto_adjust=True, progress=False, threads=True)
-px = data["Close"]; vol = data["Volume"]
+px = data["Close"].copy(); vol = data["Volume"].copy()
+
+# ---- PHANTOM-ROW TRIM (added 2026-09-04) -----------------------------------
+# Yahoo intermittently appends an all-NaN bar for a session that has not
+# printed yet. Every ticker then looks stale on the last session, the repair
+# pass can never clear it (Ticker.history has no such row either), and GUARD 3
+# kills the run with all 148 tickers listed. This killed runs #51 and #52.
+_real = px.dropna(how="all").index
+if len(_real) == 0: print("FATAL: download returned no usable rows at all"); sys.exit(1)
+_phantom = [str(d.date()) for d in px.index if d > _real[-1]]
+if _phantom: print("PHANTOM rows trimmed:", _phantom)
+px = px.loc[:_real[-1]].copy(); vol = vol.loc[:_real[-1]].copy()
 
 # ---- REPAIR PASS (added 2026-08-12) ----------------------------------------
 # yfinance's SQLite tz-cache can raise OperationalError('database is locked')
