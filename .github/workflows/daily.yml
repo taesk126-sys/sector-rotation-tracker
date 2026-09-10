@@ -1,7 +1,7 @@
 name: Daily rotation update
 on:
   schedule:
-    - cron: "0 3 * * 2-6"
+    - cron: "7 1 * * 2-6"  # 01:07 UTC Tue-Sat = 08:07 Bangkok; minute is deliberately not :00 (top-of-hour queue was adding ~4h45m delay)
   workflow_dispatch:
 permissions:
   contents: write
