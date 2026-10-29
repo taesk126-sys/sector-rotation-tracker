@@ -4,12 +4,10 @@
  "yfinance_version": "1.5.1",
  "pandas_version": "2.3.3",
  "python_version": "3.12.15",
- "download_utc": "2026-10-28T05:00:07.601606+00:00",
- "asof_market_date": "2026-10-27",
+ "download_utc": "2026-10-29T05:13:38.767364+00:00",
+ "asof_market_date": "2026-10-28",
  "tickers_requested": 148,
  "tickers_ok": 148,
  "rows": 251,
- "tickers_repaired": [
-  "MSFT"
- ]
+ "tickers_repaired": []
 }
