@@ -4,10 +4,12 @@
  "yfinance_version": "1.5.1",
  "pandas_version": "2.3.3",
  "python_version": "3.12.16",
- "download_utc": "2026-11-14T05:47:51.839582+00:00",
- "asof_market_date": "2026-11-13",
+ "download_utc": "2026-11-17T06:18:17.120972+00:00",
+ "asof_market_date": "2026-11-16",
  "tickers_requested": 148,
  "tickers_ok": 148,
  "rows": 251,
- "tickers_repaired": []
+ "tickers_repaired": [
+  "BEAM"
+ ]
 }
